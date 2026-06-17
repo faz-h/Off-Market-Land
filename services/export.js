@@ -100,6 +100,8 @@ function mapToAccount(row, campaignName) {
     'Asset Class': 'Land',
     Stage: 'Newly Added',
     County: titleCase(row.county),
+    'Owner Name': row.owner_name || undefined,
+    'Owner Address': row.owner_addr || undefined,
     'County Property ID': row.prop_id != null ? String(row.prop_id) : undefined,
     'Geo ID': geoOrProp != null ? String(geoOrProp) : undefined,
     APN: geoOrProp != null ? String(geoOrProp) : undefined,
