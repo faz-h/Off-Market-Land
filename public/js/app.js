@@ -55,6 +55,8 @@
     if (document.querySelector('input[name=pipeline]:checked').value === 'none') q.pipeline = 'none';
     const listings = document.querySelector('input[name=listings]:checked').value;
     if (listings !== 'any') q.listings = listings;
+    const estate = document.querySelector('input[name=estate]:checked').value;
+    if (estate !== 'any') q.estate = estate;
     if (val('aadtMin')) q.aadtMin = val('aadtMin');
     if (el('aadtInclNull').checked) q.aadtInclNull = '1'; else q.aadtInclNull = '0';
     if (val('freewayMaxMi')) q.freewayMaxMi = val('freewayMaxMi');
@@ -189,9 +191,17 @@
       `<br>${p.situs || '(no situs)'}` +
       `<br>imp ${imp} · width ${w(p.width_ft)}/${w(p.width_mean_ft)}ft · ${p.elongation != null ? Math.round(p.elongation) + ':1' : '?'} long` +
       `<br>Flood: ${p.flood_zone || '—'} · AADT: ${p.aadt != null ? p.aadt.toLocaleString() : 'unknown'}` +
+      estateLine(p) +
       listingLine(p) +
       `<br><small>PropID ${p.prop_id}</small> · <a href="#" onclick="return omlExclude('${p.prop_id}')">exclude</a>`,
       { maxWidth: 320 });
+  }
+
+  // Estate / inheritance badge: owner-name probate proxy (db/flag-estate.js). The reason shows signal
+  // strength; "et al (co-owners)" is the weak tier, the rest are strong.
+  function estateLine(p) {
+    if (!p.estate_flag) return '';
+    return `<br><span style="color:#7a3ea8;font-weight:700">INHERITED / ESTATE</span> · ${p.estate_reason || 'estate'}`;
   }
 
   // Listing cross-reference badge: active listings dominate; a sold-only match shows greyed "SOLD".
@@ -262,6 +272,7 @@
     document.querySelectorAll('#filters input[type=checkbox]').forEach((i) => { i.checked = true; });
     document.querySelector('input[name=pipeline][value=any]').checked = true;
     document.querySelector('input[name=listings][value=any]').checked = true;
+    document.querySelector('input[name=estate][value=any]').checked = true;
     document.querySelector('input[name=metric][value=count]').checked = true;
     clearGeo();
     schedule();

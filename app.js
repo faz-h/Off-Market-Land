@@ -105,7 +105,8 @@ app.get('/api/parcels', (req, res) => {
   const matched = db.prepare(`SELECT COUNT(*) n FROM parcels ${w}`).get(p).n;
   const cols = 'prop_id, county, owner_name, is_public, public_reason, landuse_st, improvement_value, acres, '
     + 'width_ft, width_mean_ft, elongation, situs_street, situs_city, flood_zone, frontage_aadt, rep_lat, rep_lng, '
-    + 'listed_active, listed_sold, listing_status, listing_price, listing_url, listing_name'
+    + 'listed_active, listed_sold, listing_status, listing_price, listing_url, listing_name, '
+    + 'estate_flag, estate_reason'
     + (asPoint ? '' : ', geom_json');
   const rows = db.prepare(`SELECT ${cols} FROM parcels ${w} LIMIT @limit`).all({ ...p, limit });
   const features = rows.map((row) => ({
@@ -122,6 +123,7 @@ app.get('/api/parcels', (req, res) => {
       flood_zone: row.flood_zone, aadt: row.frontage_aadt, lat: row.rep_lat, lng: row.rep_lng,
       listed_active: row.listed_active, listed_sold: row.listed_sold, listing_status: row.listing_status,
       listing_price: row.listing_price, listing_url: row.listing_url, listing_name: row.listing_name,
+      estate_flag: row.estate_flag, estate_reason: row.estate_reason,
     },
   }));
   res.json({ type: 'FeatureCollection', geom: asPoint ? 'point' : 'polygon', matched, returned: features.length, capped: matched > features.length, features });

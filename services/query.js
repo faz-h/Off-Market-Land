@@ -50,6 +50,12 @@ function buildWhere(q) {
   if (q.listings === 'exclude') clauses.push('COALESCE(listed_active, 0) = 0 AND COALESCE(listed_sold, 0) = 0');
   else if (q.listings === 'excludeExceptSold') clauses.push('COALESCE(listed_active, 0) = 0');
 
+  // Estate / inheritance signal (db/flag-estate.js): owner-name probate proxy. 'only' = STRONG signals
+  // (estate / heirs / life estate / executor / deceased); 'onlyBroad' also keeps the weaker "et al"
+  // co-owner proxy. Owner-name derived only — no county source carries a transfer date, so not time-bounded.
+  if (q.estate === 'only') clauses.push("COALESCE(estate_flag, 0) = 1 AND COALESCE(estate_reason, '') <> 'et al (co-owners)'");
+  else if (q.estate === 'onlyBroad') clauses.push('COALESCE(estate_flag, 0) = 1');
+
   // ---- drawn-area spatial filter (TRUE filter: count, hexes, parcels, export all honor it) ----
   // A parcel matches when its interior point (rep_lng/rep_lat) is inside the shape. A bbox prefilter (indexed
   // by parcels_rep) narrows before the precise test. q.polygon = JSON [[lng,lat],...]; q.circle = "lng,lat,m".

@@ -98,6 +98,16 @@
       </div>
 
       <div class="section">
+        <label class="h">Inheritance / probate signal</label>
+        <div class="seg" role="radiogroup">
+          <label><input type="radio" name="estate" value="any" checked><span>Show all</span></label>
+          <label><input type="radio" name="estate" value="only"><span>Estate / inherited</span></label>
+          <label><input type="radio" name="estate" value="onlyBroad"><span>+ &ldquo;et al&rdquo;</span></label>
+        </div>
+        <div class="sub" style="margin-top:6px">Flags parcels whose <b>owner name</b> carries estate/heir language (&ldquo;Estate of&hellip;&rdquo;, &ldquo;&hellip;Heirs&rdquo;, &ldquo;Life Estate&rdquo;, executor/administrator) &mdash; a proxy for property that has passed through inheritance or probate. <b>Estate / inherited</b> = strong signals only; <b>+ &ldquo;et al&rdquo;</b> also keeps the weaker &ldquo;et al&rdquo; co-owner proxy (noisier). Note: county data carries no transfer date, so this is not time-bounded to &ldquo;recent.&rdquo;</div>
+      </div>
+
+      <div class="section">
         <label class="h">Road frontage traffic</label>
         <div class="row"><div class="field"><span class="cap">Min AADT</span><input type="number" id="aadtMin" min="0" step="100" placeholder="any"></div></div>
         <label class="chk"><input type="checkbox" id="aadtInclNull" checked> Include parcels with unknown traffic</label>

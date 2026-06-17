@@ -66,6 +66,12 @@ CREATE TABLE IF NOT EXISTS parcels (
   listing_count  INTEGER,    -- number of listing points matched inside this parcel
   listings_at    TEXT,       -- timestamp of the last cross-reference run
 
+  -- estate / inheritance signal (db/flag-estate.js): owner-name probate proxy. estate_flag=1 if the owner
+  -- name shows estate/heir language; estate_reason carries which signal (estate / heirs / life estate /
+  -- executor-administrator / deceased / "et al"). Owner-name derived — no transfer date exists in source data.
+  estate_flag    INTEGER,
+  estate_reason  TEXT,
+
   -- export support (services/geocode.js, services/export.js) --
   location_text     TEXT,    -- cached Google reverse-geocode: "near <street> in <city>" (geocode-once)
   location_text_at  TEXT     -- timestamp the location_text was cached
@@ -82,4 +88,5 @@ CREATE INDEX IF NOT EXISTS parcels_width     ON parcels(width_ft);
 CREATE INDEX IF NOT EXISTS parcels_bldgcov   ON parcels(building_cov_pct);
 CREATE INDEX IF NOT EXISTS parcels_listed_active ON parcels(listed_active);
 CREATE INDEX IF NOT EXISTS parcels_listed_sold   ON parcels(listed_sold);
+CREATE INDEX IF NOT EXISTS parcels_estate_flag   ON parcels(estate_flag);
 CREATE INDEX IF NOT EXISTS parcels_rep ON parcels(rep_lat, rep_lng); -- drawn-area bbox prefilter
