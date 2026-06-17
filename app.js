@@ -5,7 +5,7 @@ const express = require('express');
 const Database = require('better-sqlite3');
 const { buildWhere, hexRing } = require('./services/query');
 const exportSvc = require('./services/export');
-const { geocodeUncached, ensureLocationColumns } = require('./services/geocode');
+const { geocodeUncached, geocodeCityZipUncached, ensureLocationColumns } = require('./services/geocode');
 const { registerGeoFns } = require('./services/geo');
 
 const app = express();
@@ -191,6 +191,12 @@ async function runExportJob(job, rows, cols) {
   // 1) geocode (cached): fills location_text for any batch parcel never geocoded
   job.phase = 'geocoding';
   await geocodeUncached(dbw, rows, {
+    apiKey: process.env.GOOGLE_API_KEY,
+    onProgress: (done, total) => { job.geocode = { done, total }; },
+  });
+  // 1b) city/zip fallback (cached): for parcels the CAD gave NEITHER a situs city NOR zip, reverse-geocode the
+  //     interior point so the export's City/Zip fallback guarantees at least one of the two on every row.
+  await geocodeCityZipUncached(dbw, rows, {
     apiKey: process.env.GOOGLE_API_KEY,
     onProgress: (done, total) => { job.geocode = { done, total }; },
   });

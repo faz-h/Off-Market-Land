@@ -91,6 +91,9 @@ function lookupExisting(byKey, row) {
 }
 
 // ---- field mapping for a NEW Accounts row ----
+// City/Zip fall back to the reverse-geocode columns (geo_city/geo_zip) when the CAD situs lacked them, so every
+// row carries at least one of the two for skip tracing. pickStr() coerces empty/'' sentinels to undefined.
+const pickStr = (v) => { const s = v == null ? '' : String(v).trim(); return s || undefined; };
 function mapToAccount(row, campaignName) {
   const coords = (row.rep_lat != null && row.rep_lng != null) ? `${row.rep_lat}, ${row.rep_lng}` : null;
   const geoOrProp = (row.geo_id && String(row.geo_id).trim()) ? row.geo_id : row.prop_id;
@@ -106,9 +109,9 @@ function mapToAccount(row, campaignName) {
     'Geo ID': geoOrProp != null ? String(geoOrProp) : undefined,
     APN: geoOrProp != null ? String(geoOrProp) : undefined,
     Address: row.situs_street || row.situs_raw || undefined,
-    City: row.situs_city || undefined,
-    State: row.situs_state || undefined,
-    Zip: row.situs_zip || undefined,
+    City: pickStr(row.situs_city) || pickStr(row.geo_city),
+    State: pickStr(row.situs_state),
+    Zip: pickStr(row.situs_zip) || pickStr(row.geo_zip),
     'Flood Zone': row.flood_zone || undefined,
     Acres: typeof row.acres === 'number' ? row.acres : undefined,
     'Year Built': row.year_built && row.year_built > 0 ? row.year_built : undefined,
