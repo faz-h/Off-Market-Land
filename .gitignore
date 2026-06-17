@@ -1,0 +1,8 @@
+node_modules/
+.env
+db/parcels.db*
+db/*.vendor-bak
+data/
+exports/
+*.log
+.DS_Store

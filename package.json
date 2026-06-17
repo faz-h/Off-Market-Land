@@ -1,0 +1,28 @@
+{
+  "name": "off-market-land",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Identify off-market vacant land parcels in the Greater Houston MSA and export skip-trace-ready lists to Airtable.",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js",
+    "ingest": "node db/ingest-parcels.js",
+    "enrich": "node enrich/run-enrichment.js",
+    "active-listings": "node enrich/active-listings.js"
+  },
+  "license": "ISC",
+  "dependencies": {
+    "@turf/turf": "^7.1.0",
+    "axios": "^1.7.7",
+    "better-sqlite3": "^11.3.0",
+    "dotenv": "^16.4.5",
+    "ejs": "^3.1.10",
+    "exceljs": "^4.4.0",
+    "express": "^4.19.2",
+    "flatbush": "^3.3.0",
+    "h3-js": "^4.4.0",
+    "polylabel": "^1.1.0",
+    "proj4": "^2.20.9",
+    "shapefile": "^0.6.6"
+  }
+}
