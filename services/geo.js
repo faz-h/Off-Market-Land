@@ -33,6 +33,21 @@ function registerGeoFns(db) {
     if (!Array.isArray(memoRing) || memoRing.length < 3) return 0;
     return pointInPolygon(lng, lat, memoRing) ? 1 : 0;
   });
+
+  // oml_near_road(frontierJson, maxFt, minAadt) -> 1 if the parcel has a main road on its staircase that is
+  // BOTH within maxFt AND >= minAadt. frontierJson = [[ft,aadt,name],...] (enrich/traffic.js near_road_frontier).
+  // This answers "a road >= Y AADT within <= X ft" EXACTLY for any X,Y — the closer-but-less-busy road is kept
+  // on the staircase, so tightening the distance never wrongly drops it. Per-row parse (frontier differs by row).
+  db.function('oml_near_road', { deterministic: true }, (frontierJson, maxFt, minAadt) => {
+    if (!frontierJson) return 0;
+    const x = (maxFt == null) ? Infinity : maxFt;
+    const y = (minAadt == null) ? 0 : minAadt;
+    let fr;
+    try { fr = JSON.parse(frontierJson); } catch (e) { return 0; }
+    if (!Array.isArray(fr)) return 0;
+    for (const e of fr) if (e[0] <= x && e[1] >= y) return 1;
+    return 0;
+  });
 }
 
 module.exports = { pointInPolygon, registerGeoFns };

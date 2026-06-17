@@ -110,7 +110,16 @@
       <div class="section">
         <label class="h">Road frontage traffic</label>
         <div class="row"><div class="field"><span class="cap">Min AADT</span><input type="number" id="aadtMin" min="0" step="100" placeholder="any"></div></div>
-        <label class="chk"><input type="checkbox" id="aadtInclNull" checked> Include parcels with unknown traffic</label>
+        <label class="chk"><input type="checkbox" id="aadtInclNull"> Include parcels with unknown traffic</label>
+      </div>
+
+      <div class="section">
+        <label class="h">Near a main road</label>
+        <div class="row">
+          <div class="field"><span class="cap">Within (ft)</span><input type="number" id="nearRoadMaxFt" min="0" max="2640" step="10" placeholder="any"></div>
+          <div class="field"><span class="cap">Road min AADT</span><input type="number" id="nearRoadAadtMin" min="0" step="100" placeholder="any"></div>
+        </div>
+        <div class="sub">A counted main road within this distance of the parcel edge — includes parcels that don't front one (turn off, short drive in). Stored up to ½ mile (2,640 ft); the AADT shown is the nearest road's, so it's most precise at shorter distances.</div>
       </div>
 
       <div class="section">

@@ -59,6 +59,8 @@
     if (estate !== 'any') q.estate = estate;
     if (val('aadtMin')) q.aadtMin = val('aadtMin');
     if (el('aadtInclNull').checked) q.aadtInclNull = '1'; else q.aadtInclNull = '0';
+    if (val('nearRoadMaxFt')) q.nearRoadMaxFt = val('nearRoadMaxFt');
+    if (val('nearRoadAadtMin')) q.nearRoadAadtMin = val('nearRoadAadtMin');
     if (val('freewayMaxMi')) q.freewayMaxMi = val('freewayMaxMi');
     if (val('incomeMin')) q.incomeMin = val('incomeMin');
     if (val('incomeMax')) q.incomeMax = val('incomeMax');
@@ -191,6 +193,9 @@
       `<br>${p.situs || '(no situs)'}` +
       `<br>imp ${imp} · width ${w(p.width_ft)}/${w(p.width_mean_ft)}ft · ${p.elongation != null ? Math.round(p.elongation) + ':1' : '?'} long` +
       `<br>Flood: ${p.flood_zone || '—'} · AADT: ${p.aadt != null ? p.aadt.toLocaleString() : 'unknown'}` +
+      (p.aadt == null && p.near_road_frontier && p.near_road_frontier.length
+        ? '<br>Near main road' + (p.near_road_frontier.length > 1 ? 's' : '') + ': '
+          + p.near_road_frontier.map((e) => `${e[2] || '—'} ${Number(e[1]).toLocaleString()}@${e[0]}ft`).join(' · ') : '') +
       estateLine(p) +
       listingLine(p) +
       `<br><small>PropID ${p.prop_id}</small> · <a href="#" onclick="return omlExclude('${p.prop_id}')">exclude</a>`,

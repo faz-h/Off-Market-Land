@@ -47,6 +47,15 @@ CREATE TABLE IF NOT EXISTS parcels (
   pipeline_dist_ft  INTEGER,    -- 0 if crossing; else distance from interior point to nearest pipeline (ft), null if far
   frontage_aadt     INTEGER,
   frontage_road     TEXT,
+  -- proximity to main roads even when the parcel does NOT front one (enrich/traffic.js, 2nd pass): the TxDOT
+  -- AADT network is counted/on-system roads only (side streets excluded), so an "AADT road" = a main road you'd
+  -- turn off of. Distances are edge-to-road, capped at NEAR_ROAD_CAP_FT (2640 = 1/2 mi).
+  near_road_frontier TEXT,     -- "closest road at each busyness level" staircase: JSON [[ft,aadt,name],...],
+                               -- distance-sorted, each entry busier than every closer one (Pareto frontier).
+                               -- Filtered exactly via the oml_near_road UDF: "a road >= Y AADT within <= X ft".
+  near_road_ft      INTEGER,   -- convenience: edge distance (ft) to the NEAREST main road (= frontier[0]); NULL if none within cap
+  near_road_aadt    INTEGER,   -- AADT of that nearest main road
+  near_road_name    TEXT,      -- its route name (e.g. "FM 1093")
   nearest_freeway   TEXT,
   freeway_mi        REAL,
   c2_pop INTEGER, c2_income INTEGER, c2_age REAL, c2_households INTEGER, c2_owner_pct REAL, c2_growth REAL,
@@ -81,6 +90,7 @@ CREATE INDEX IF NOT EXISTS parcels_county ON parcels(county);
 CREATE INDEX IF NOT EXISTS parcels_acres  ON parcels(acres);
 CREATE INDEX IF NOT EXISTS parcels_flood  ON parcels(flood_zone);
 CREATE INDEX IF NOT EXISTS parcels_aadt   ON parcels(frontage_aadt);
+CREATE INDEX IF NOT EXISTS parcels_near_road ON parcels(near_road_ft);
 CREATE INDEX IF NOT EXISTS parcels_source    ON parcels(source);
 CREATE INDEX IF NOT EXISTS parcels_owner_key ON parcels(owner_key);
 CREATE INDEX IF NOT EXISTS parcels_is_public ON parcels(is_public);

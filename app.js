@@ -104,7 +104,8 @@ app.get('/api/parcels', (req, res) => {
   const limit = Math.min(Number(req.query.limit) || (asPoint ? 6000 : 2000), asPoint ? 12000 : 5000);
   const matched = db.prepare(`SELECT COUNT(*) n FROM parcels ${w}`).get(p).n;
   const cols = 'prop_id, county, owner_name, is_public, public_reason, landuse_st, improvement_value, acres, '
-    + 'width_ft, width_mean_ft, elongation, situs_street, situs_city, flood_zone, frontage_aadt, rep_lat, rep_lng, '
+    + 'width_ft, width_mean_ft, elongation, situs_street, situs_city, flood_zone, frontage_aadt, '
+    + 'near_road_ft, near_road_aadt, near_road_name, near_road_frontier, rep_lat, rep_lng, '
     + 'listed_active, listed_sold, listing_status, listing_price, listing_url, listing_name, '
     + 'estate_flag, estate_reason'
     + (asPoint ? '' : ', geom_json');
@@ -120,7 +121,10 @@ app.get('/api/parcels', (req, res) => {
       landuse: row.landuse_st, improvement_value: row.improvement_value,
       acres: row.acres, width_ft: row.width_ft, width_mean_ft: row.width_mean_ft, elongation: row.elongation,
       situs: [row.situs_street, row.situs_city].filter(Boolean).join(', '),
-      flood_zone: row.flood_zone, aadt: row.frontage_aadt, lat: row.rep_lat, lng: row.rep_lng,
+      flood_zone: row.flood_zone, aadt: row.frontage_aadt,
+      near_road_ft: row.near_road_ft, near_road_aadt: row.near_road_aadt, near_road_name: row.near_road_name,
+      near_road_frontier: (() => { try { return row.near_road_frontier ? JSON.parse(row.near_road_frontier) : null; } catch (e) { return null; } })(),
+      lat: row.rep_lat, lng: row.rep_lng,
       listed_active: row.listed_active, listed_sold: row.listed_sold, listing_status: row.listing_status,
       listing_price: row.listing_price, listing_url: row.listing_url, listing_name: row.listing_name,
       estate_flag: row.estate_flag, estate_reason: row.estate_reason,

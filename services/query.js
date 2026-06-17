@@ -32,11 +32,23 @@ function buildWhere(q) {
 
   if (q.pipeline === 'none') clauses.push('(has_pipeline IS NULL OR has_pipeline = 0)');
 
+  // Road-frontage AADT minimum. "Include parcels with unknown traffic" (now OFF by default) ONLY widens this
+  // filter to also keep NULL-traffic parcels; with no AADT minimum set the box has no effect, so unknown-traffic
+  // parcels are never hidden from the default view.
   if (num(q.aadtMin) != null) {
     clauses.push(truthy(q.aadtInclNull) ? '(frontage_aadt >= @aadtMin OR frontage_aadt IS NULL)' : 'frontage_aadt >= @aadtMin');
     params.aadtMin = num(q.aadtMin);
-  } else if (q.aadtInclNull === '0') {
-    clauses.push('frontage_aadt IS NOT NULL');
+  }
+
+  // "Near a main road": EXACT "a road >= Y AADT within <= X ft" via the staircase + oml_near_road UDF. Unset
+  // distance => no distance limit (up to the 1/2-mile enrichment cap); unset AADT => any counted road. This
+  // correctly keeps a closer-but-less-busy qualifying road when the distance is tightened (the bug a single
+  // nearest/busiest value would cause). A NULL frontier (no main road within cap) returns 0 = excluded.
+  const nearFt = num(q.nearRoadMaxFt), nearAadt = num(q.nearRoadAadtMin);
+  if (nearFt != null || nearAadt != null) {
+    clauses.push('oml_near_road(near_road_frontier, @nearRoadMaxFt, @nearRoadAadtMin) = 1');
+    params.nearRoadMaxFt = nearFt != null ? nearFt : null;
+    params.nearRoadAadtMin = nearAadt != null ? nearAadt : null;
   }
 
   if (num(q.freewayMaxMi) != null) { clauses.push('freeway_mi <= @freewayMaxMi'); params.freewayMaxMi = num(q.freewayMaxMi); }
