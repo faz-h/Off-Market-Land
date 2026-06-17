@@ -107,7 +107,9 @@ function mapToAccount(row, campaignName) {
     'Owner Address': row.owner_addr || undefined,
     'County Property ID': row.prop_id != null ? String(row.prop_id) : undefined,
     'Geo ID': geoOrProp != null ? String(geoOrProp) : undefined,
-    APN: geoOrProp != null ? String(geoOrProp) : undefined,
+    // APN mirrors the County Property ID (= prop_id): that's the selector Crexi matches on.
+    // (The Outreach App's Crexi pipeline later overwrites APN with Crexi's returned value.)
+    APN: row.prop_id != null ? String(row.prop_id) : undefined,
     Address: row.situs_street || row.situs_raw || undefined,
     City: pickStr(row.situs_city) || pickStr(row.geo_city),
     State: pickStr(row.situs_state),
