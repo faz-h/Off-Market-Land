@@ -20,7 +20,7 @@ const { buildWhere } = require('./query');
 const BASE_ID = process.env.AIRTABLE_BASE_ID;
 const ACCOUNTS_TABLE = 'tblWDvEfAkT9Qq7OC';
 const CAMPAIGN_FIELD = 'Off-Market Land Campaign';
-const EXPORT_DIR = path.join(__dirname, '..', 'exports');
+const EXPORT_DIR = process.env.EXPORT_DIR || path.join(__dirname, '..', 'exports');
 // Columns dumped to Excel = every parcels column EXCEPT these (raw geometry / index cells are unreadable).
 const EXCEL_EXCLUDE = new Set(['geom_json', 'h3_r5', 'h3_r6', 'h3_r7', 'h3_r8']);
 

@@ -9,7 +9,7 @@ const { geocodeUncached, ensureLocationColumns } = require('./services/geocode')
 const { registerGeoFns } = require('./services/geo');
 
 const app = express();
-const DB_PATH = path.join(__dirname, 'db', 'parcels.db');
+const DB_PATH = process.env.DB_FILE || path.join(__dirname, 'db', 'parcels.db'); // DB_FILE points at the Railway volume in prod
 const H3_RES = [5, 6, 7, 8]; // whitelist — guards the dynamic h3_rN column name
 
 let db = null;   // read-only, for queries

@@ -6,9 +6,13 @@
   "main": "app.js",
   "scripts": {
     "start": "node app.js",
+    "seed": "node scripts/seed-db.js",
     "ingest": "node db/ingest-parcels.js",
     "enrich": "node enrich/run-enrichment.js",
     "active-listings": "node enrich/active-listings.js"
+  },
+  "engines": {
+    "node": "20.x"
   },
   "license": "ISC",
   "dependencies": {

@@ -1,0 +1,8 @@
+node_modules
+data
+db/parcels.db*
+db/*.vendor-bak
+exports
+*.log
+.env
+.git
