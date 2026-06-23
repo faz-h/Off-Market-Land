@@ -55,6 +55,8 @@
     if (document.querySelector('input[name=pipeline]:checked').value === 'none') q.pipeline = 'none';
     const listings = document.querySelector('input[name=listings]:checked').value;
     if (listings !== 'any') q.listings = listings;
+    const exported = document.querySelector('input[name=exported]:checked').value;
+    if (exported !== 'any') q.exported = exported;
     const estate = document.querySelector('input[name=estate]:checked').value;
     if (estate !== 'any') q.estate = estate;
     if (val('aadtMin')) q.aadtMin = val('aadtMin');
@@ -198,6 +200,7 @@
           + p.near_road_frontier.map((e) => `${e[2] || '—'} ${Number(e[1]).toLocaleString()}@${e[0]}ft`).join(' · ') : '') +
       estateLine(p) +
       listingLine(p) +
+      exportedLine(p) +
       `<br><small>PropID ${p.prop_id}</small> · <a href="#" onclick="return omlExclude('${p.prop_id}')">exclude</a>`,
       { maxWidth: 320 });
   }
@@ -219,6 +222,14 @@
     const price = p.listing_price != null ? ' · $' + Number(p.listing_price).toLocaleString() : '';
     const link = p.listing_url ? ` · <a href="${p.listing_url}" target="_blank" rel="noopener">view listing</a>` : '';
     return `<br><span style="color:${color};font-weight:700">${label}</span>${status}${price}${link}`;
+  }
+
+  // Already-exported badge: parcel matches an existing Airtable Accounts(Land) row, so a re-export would
+  // append the new campaign tag rather than create a duplicate. Shows the campaign(s) the row is already in.
+  function exportedLine(p) {
+    if (!p.in_airtable) return '';
+    const camps = p.airtable_campaigns ? ` · ${p.airtable_campaigns}` : '';
+    return `<br><span style="color:#1a7f37;font-weight:700">ALREADY IN AIRTABLE</span>${camps}`;
   }
 
   // manual exclude: drop a hand-picked parcel from candidates, then re-render
@@ -277,10 +288,28 @@
     document.querySelectorAll('#filters input[type=checkbox]').forEach((i) => { i.checked = true; });
     document.querySelector('input[name=pipeline][value=any]').checked = true;
     document.querySelector('input[name=listings][value=any]').checked = true;
+    document.querySelector('input[name=exported][value=any]').checked = true;
     document.querySelector('input[name=estate][value=any]').checked = true;
     document.querySelector('input[name=metric][value=count]').checked = true;
     clearGeo();
     schedule();
+  });
+  // "Refresh from Airtable" — re-pull the already-exported flags from Airtable, then re-render the map.
+  el('refresh-exported').addEventListener('click', (e) => {
+    e.preventDefault();
+    const status = el('refresh-exported-status');
+    status.style.color = '#555';
+    status.textContent = 'Refreshing…';
+    fetch('/api/refresh-exported', { method: 'POST' })
+      .then((r) => r.json())
+      .then((d) => {
+        if (!d.ok) { status.style.color = '#c00'; status.textContent = 'Failed: ' + (d.error || 'error'); return; }
+        status.style.color = '#0a7d3c';
+        status.textContent = `✓ ${Number(d.matched).toLocaleString()} parcels already in Airtable`;
+        schedule();
+      })
+      .catch((err) => { status.style.color = '#c00'; status.textContent = 'Failed: ' + err.message; });
+    return false;
   });
   map.on('zoomend', schedule);
   map.on('moveend', () => { if (usingBbox) schedule(); });

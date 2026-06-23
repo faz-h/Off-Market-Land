@@ -62,6 +62,11 @@ function buildWhere(q) {
   if (q.listings === 'exclude') clauses.push('COALESCE(listed_active, 0) = 0 AND COALESCE(listed_sold, 0) = 0');
   else if (q.listings === 'excludeExceptSold') clauses.push('COALESCE(listed_active, 0) = 0');
 
+  // Already-exported cross-reference (services/exported-sync.js + the export job's live stamp). 'exclude' hides
+  // any parcel already present in Airtable Accounts(Land) — i.e. one a re-export would append-tag onto an
+  // existing row rather than create anew. Flags are refreshed from Airtable via POST /api/refresh-exported.
+  if (q.exported === 'exclude') clauses.push('COALESCE(in_airtable, 0) = 0');
+
   // Estate / inheritance signal (db/flag-estate.js): owner-name probate proxy. 'only' = STRONG signals
   // (estate / heirs / life estate / executor / deceased); 'onlyBroad' also keeps the weaker "et al"
   // co-owner proxy. Owner-name derived only — no county source carries a transfer date, so not time-bounded.

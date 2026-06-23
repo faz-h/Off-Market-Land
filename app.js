@@ -5,6 +5,7 @@ const express = require('express');
 const Database = require('better-sqlite3');
 const { buildWhere, hexRing } = require('./services/query');
 const exportSvc = require('./services/export');
+const { ensureExportedColumns, syncExported } = require('./services/exported-sync');
 const { geocodeUncached, geocodeCityZipUncached, ensureLocationColumns } = require('./services/geocode');
 const { registerGeoFns } = require('./services/geo');
 
@@ -18,6 +19,7 @@ try {
   // open writable first and ensure export columns + spatial index exist, so the read-only handle sees them
   dbw = new Database(DB_PATH, { fileMustExist: true });
   ensureLocationColumns(dbw);
+  ensureExportedColumns(dbw); // in_airtable / airtable_campaigns for the "already exported" cross-reference
   dbw.prepare('CREATE INDEX IF NOT EXISTS parcels_rep ON parcels(rep_lat, rep_lng)').run();
   db = new Database(DB_PATH, { readonly: true, fileMustExist: true });
   registerGeoFns(db); // drawn-area polygon UDF, used by buildWhere on the query connection
@@ -107,7 +109,7 @@ app.get('/api/parcels', (req, res) => {
     + 'width_ft, width_mean_ft, elongation, situs_street, situs_city, flood_zone, frontage_aadt, '
     + 'near_road_ft, near_road_aadt, near_road_name, near_road_frontier, rep_lat, rep_lng, '
     + 'listed_active, listed_sold, listing_status, listing_price, listing_url, listing_name, '
-    + 'estate_flag, estate_reason'
+    + 'estate_flag, estate_reason, in_airtable, airtable_campaigns'
     + (asPoint ? '' : ', geom_json');
   const rows = db.prepare(`SELECT ${cols} FROM parcels ${w} LIMIT @limit`).all({ ...p, limit });
   const features = rows.map((row) => ({
@@ -128,6 +130,7 @@ app.get('/api/parcels', (req, res) => {
       listed_active: row.listed_active, listed_sold: row.listed_sold, listing_status: row.listing_status,
       listing_price: row.listing_price, listing_url: row.listing_url, listing_name: row.listing_name,
       estate_flag: row.estate_flag, estate_reason: row.estate_reason,
+      in_airtable: row.in_airtable, airtable_campaigns: row.airtable_campaigns,
     },
   }));
   res.json({ type: 'FeatureCollection', geom: asPoint ? 'point' : 'polygon', matched, returned: features.length, capped: matched > features.length, features });
@@ -142,6 +145,18 @@ app.post('/api/exclude', (req, res) => {
   const val = req.query.undo === '1' ? 0 : 1;
   const info = dbw.prepare('UPDATE parcels SET excluded_manual = ? WHERE prop_id = ?').run(val, propId);
   res.json({ ok: true, prop_id: propId, excluded: val, changed: info.changes });
+});
+
+// Refresh the "already exported" flags from Airtable — pulls every Accounts(Land) row and re-stamps
+// parcels.in_airtable / airtable_campaigns. Drives the "Exclude exported" toggle and the popup badge.
+app.post('/api/refresh-exported', async (req, res) => {
+  if (!dbw) return res.status(503).json({ error: 'db not writable' });
+  try {
+    const r = await syncExported(dbw);
+    res.json({ ok: true, ...r });
+  } catch (e) {
+    res.status(502).json({ error: 'could not sync exported flags from Airtable', detail: String(e.message || e) });
+  }
 });
 
 // ---- campaign export (Airtable + Excel) -------------------------------------------------------------
@@ -212,11 +227,20 @@ async function runExportJob(job, rows, cols) {
       onProgress: (done, total) => { job.airtable = { done, total }; },
     });
     job.airtableResult = { created: r.created, appended: r.appended, alreadyTagged: r.alreadyTagged };
-    // stamp exported_at on every parcel we created or re-tagged
+    // stamp exported_at + flag in_airtable on every parcel we created or re-tagged, and add this campaign to
+    // the parcel's campaign list, so the "already exported" toggle/badge reflect the export immediately (the
+    // /api/refresh-exported reconcile is the authoritative source, but this avoids needing it after each export).
     const ids = [...r.createdLocalIds, ...r.touchedLocalIds];
     if (ids.length) {
-      const stamp = dbw.prepare("UPDATE parcels SET exported_at = datetime('now') WHERE id = ?");
-      dbw.transaction((list) => list.forEach((pid) => stamp.run(pid)))(ids);
+      const stamp = dbw.prepare("UPDATE parcels SET exported_at = datetime('now'), in_airtable = 1, in_airtable_at = datetime('now') WHERE id = ?");
+      const getCamps = dbw.prepare('SELECT airtable_campaigns c FROM parcels WHERE id = ?');
+      const setCamps = dbw.prepare('UPDATE parcels SET airtable_campaigns = ? WHERE id = ?');
+      dbw.transaction((list) => list.forEach((pid) => {
+        stamp.run(pid);
+        const set = new Set(String(getCamps.get(pid)?.c || '').split(' | ').map((s) => s.trim()).filter(Boolean));
+        set.add(job.campaignName);
+        setCamps.run([...set].join(' | '), pid);
+      }))(ids);
     }
   }
 

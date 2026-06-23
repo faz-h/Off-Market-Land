@@ -98,6 +98,15 @@
       </div>
 
       <div class="section">
+        <label class="h">Already exported (Airtable)</label>
+        <div class="seg" role="radiogroup">
+          <label><input type="radio" name="exported" value="any" checked><span>Show all</span></label>
+          <label><input type="radio" name="exported" value="exclude"><span>Exclude exported</span></label>
+        </div>
+        <div class="sub" style="margin-top:6px">Hides parcels already in the Airtable Accounts table (Land) &mdash; the ones a re-export would tag onto an existing row instead of creating a new one. <a href="#" id="refresh-exported">Refresh from Airtable</a> <span id="refresh-exported-status" style="color:#0a7d3c"></span></div>
+      </div>
+
+      <div class="section">
         <label class="h">Inheritance / probate signal</label>
         <div class="seg" role="radiogroup">
           <label><input type="radio" name="estate" value="any" checked><span>Show all</span></label>

@@ -181,5 +181,6 @@ async function writeExcel(rows, cols, campaignName) {
 
 module.exports = {
   listCampaignNames, isCampaignTaken, getBatchRows, pushToAirtable, writeExcel,
+  fetchExistingLand, lookupExisting,
   ACCOUNTS_TABLE, CAMPAIGN_FIELD,
 };
