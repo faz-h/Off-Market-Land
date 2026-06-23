@@ -46,6 +46,19 @@ input[type=number], select {
 }
 .btn-reset:hover { background: #eef1f5; }
 
+/* ---- parcel lookup (jump to one parcel by id) ---- */
+.lookup { margin-bottom: 16px; }
+.lookup input[type=text] {
+  padding: 6px 8px; border: 1px solid #ccd2da; border-radius: 5px; font-size: 12px; background: #fff; min-width: 0;
+}
+.lookup input[type=text].bad { border-color: #c0392b; background: #fdf2f1; }
+.btn-go {
+  padding: 6px 13px; border: 1px solid #1c6fe0; background: #1c6fe0; color: #fff;
+  border-radius: 5px; cursor: pointer; font-size: 12px; font-weight: 600; white-space: nowrap;
+}
+.btn-go:hover { background: #1860c4; }
+#lookup-msg a { color: #1c6fe0; }
+
 /* ---- export / finalize batch ---- */
 .btn-primary {
   width: 100%; padding: 9px; border: none; border-radius: 6px; cursor: pointer;

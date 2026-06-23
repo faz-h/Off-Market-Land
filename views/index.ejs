@@ -19,6 +19,15 @@
       <div class="lbl" id="count-lbl">matching parcels</div>
     </div>
 
+    <div class="lookup">
+      <label class="h" style="display:block;font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:#55606e;margin-bottom:6px">Find a parcel by ID</label>
+      <div class="row" style="gap:6px;margin-bottom:4px">
+        <input type="text" id="lookup-id" placeholder="APN / County Property ID / Geo ID" autocomplete="off" spellcheck="false" style="flex:1">
+        <button type="button" class="btn-go" id="lookup-go">Find</button>
+      </div>
+      <div class="sub" id="lookup-msg" style="margin:0">Jump straight to one parcel — searches every parcel, ignoring the filters below.</div>
+    </div>
+
     <button type="button" class="btn-primary" id="open-export">Finalize batch → Export</button>
 
     <form id="filters">

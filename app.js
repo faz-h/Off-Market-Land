@@ -136,6 +136,48 @@ app.get('/api/parcels', (req, res) => {
   res.json({ type: 'FeatureCollection', geom: asPoint ? 'point' : 'polygon', matched, returned: features.length, capped: matched > features.length, features });
 });
 
+// Direct parcel lookup by identifier — APN / County Property ID (prop_id) or Geo ID (geo_id).
+// Deliberately INDEPENDENT of buildWhere: this answers "show me THIS specific parcel," so it must
+// find a parcel even when it's filtered out of the current candidate view (built / public / excluded /
+// wrong county). Case-insensitive exact match on either id column; a small cap guards a pathological
+// many-row match (prop_id can in principle collide across counties, or an id can hit both columns).
+app.get('/api/lookup', (req, res) => {
+  if (!db) return noDb(res);
+  const id = String(req.query.id || '').trim();
+  if (!id) return res.status(400).json({ error: 'id required' });
+  const cols = 'prop_id, geo_id, county, owner_name, is_public, public_reason, landuse_st, improvement_value, acres, '
+    + 'width_ft, width_mean_ft, elongation, situs_street, situs_city, flood_zone, frontage_aadt, '
+    + 'near_road_ft, near_road_aadt, near_road_name, near_road_frontier, rep_lat, rep_lng, '
+    + 'listed_active, listed_sold, listing_status, listing_price, listing_url, listing_name, '
+    + 'estate_flag, estate_reason, in_airtable, airtable_campaigns, excluded_manual, geom_json';
+  const rows = db.prepare(
+    `SELECT ${cols} FROM parcels WHERE prop_id = @id COLLATE NOCASE OR geo_id = @id COLLATE NOCASE LIMIT 25`
+  ).all({ id });
+  const lc = id.toLowerCase();
+  const features = rows.map((row) => ({
+    type: 'Feature',
+    geometry: (() => { try { return JSON.parse(row.geom_json); } catch (e) { return null; } })(),
+    properties: {
+      prop_id: row.prop_id, geo_id: row.geo_id, county: row.county, owner: row.owner_name,
+      is_public: row.is_public, public_reason: row.public_reason,
+      landuse: row.landuse_st, improvement_value: row.improvement_value,
+      acres: row.acres, width_ft: row.width_ft, width_mean_ft: row.width_mean_ft, elongation: row.elongation,
+      situs: [row.situs_street, row.situs_city].filter(Boolean).join(', '),
+      flood_zone: row.flood_zone, aadt: row.frontage_aadt,
+      near_road_ft: row.near_road_ft, near_road_aadt: row.near_road_aadt, near_road_name: row.near_road_name,
+      near_road_frontier: (() => { try { return row.near_road_frontier ? JSON.parse(row.near_road_frontier) : null; } catch (e) { return null; } })(),
+      lat: row.rep_lat, lng: row.rep_lng,
+      listed_active: row.listed_active, listed_sold: row.listed_sold, listing_status: row.listing_status,
+      listing_price: row.listing_price, listing_url: row.listing_url, listing_name: row.listing_name,
+      estate_flag: row.estate_flag, estate_reason: row.estate_reason,
+      in_airtable: row.in_airtable, airtable_campaigns: row.airtable_campaigns,
+      excluded_manual: row.excluded_manual,
+      matched_on: String(row.prop_id || '').toLowerCase() === lc ? 'prop_id' : 'geo_id',
+    },
+  }));
+  res.json({ id, count: features.length, features });
+});
+
 // Manual exclude list — hand-curate edge cases the heuristics can't cleanly catch.
 // POST /api/exclude?prop_id=R123  (add ?undo=1 to put it back). Excluded parcels drop from every view.
 app.post('/api/exclude', (req, res) => {

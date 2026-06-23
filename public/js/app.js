@@ -25,6 +25,14 @@
   let usingBbox = false; // true when the current view is viewport-limited (refetch on pan)
   let geoFilter = null;  // drawn-area filter: { type:'polygon', coords:[[lng,lat]...] } | { type:'circle', clng, clat, radM }
 
+  // ---- parcel-lookup highlight ----
+  // A dedicated pane above the data layer (markerPane=600 / overlayPane=400) but below popups (700), so the
+  // highlighted parcel survives the normal refresh pipeline (which removes+re-adds dataLayer) and stays on top.
+  map.createPane('lookupPane');
+  map.getPane('lookupPane').style.zIndex = 645;
+  map.getPane('lookupPane').style.pointerEvents = 'auto';
+  let lookupLayer = null;
+
   // ---- build filter controls ----
   const countyList = document.getElementById('county-list');
   COUNTIES.forEach((c) => {
@@ -184,13 +192,12 @@
     renderLegend(null, null, note, kind);
   }
 
-  function parcelPopup(f, layer) {
-    const p = f.properties;
+  // Shared popup body (everything but the footer). Reused by the map drill-down popup and the lookup popup.
+  function parcelInfoHtml(p) {
     const pub = p.is_public ? ` <span style="color:#c00">[public: ${p.public_reason || '?'}]</span>` : '';
     const imp = p.improvement_value != null ? '$' + Number(p.improvement_value).toLocaleString() : '—';
     const w = (v) => (v != null ? Math.round(v) : '?');
-    layer.bindPopup(
-      `<b>${p.owner || '(no owner)'}</b>${pub}` +
+    return `<b>${p.owner || '(no owner)'}</b>${pub}` +
       `<br>${title(p.county)} · ${Number(p.acres || 0).toFixed(2)} ac · class ${p.landuse || '—'}` +
       `<br>${p.situs || '(no situs)'}` +
       `<br>imp ${imp} · width ${w(p.width_ft)}/${w(p.width_mean_ft)}ft · ${p.elongation != null ? Math.round(p.elongation) + ':1' : '?'} long` +
@@ -200,9 +207,31 @@
           + p.near_road_frontier.map((e) => `${e[2] || '—'} ${Number(e[1]).toLocaleString()}@${e[0]}ft`).join(' · ') : '') +
       estateLine(p) +
       listingLine(p) +
-      exportedLine(p) +
+      exportedLine(p);
+  }
+
+  function parcelPopup(f, layer) {
+    const p = f.properties;
+    layer.bindPopup(
+      parcelInfoHtml(p) +
       `<br><small>PropID ${p.prop_id}</small> · <a href="#" onclick="return omlExclude('${p.prop_id}')">exclude</a>`,
       { maxWidth: 320 });
+  }
+
+  // Lookup popup: leads with both IDs (and which one matched), then the standard body. Surfaces manual-exclude
+  // state since a looked-up parcel is often one the funnel dropped, and offers exclude / re-include accordingly.
+  function lookupPopup(f, layer) {
+    const p = f.properties;
+    const matched = p.matched_on === 'geo_id' ? 'Geo ID' : 'County Property ID / APN';
+    const ids = `<small>County Property ID / APN: <b>${p.prop_id || '—'}</b>`
+      + (p.geo_id ? ` · Geo ID: <b>${p.geo_id}</b>` : '') + `</small>`;
+    const excl = p.excluded_manual
+      ? `<br><span style="color:#c00;font-weight:700">MANUALLY EXCLUDED</span> · <a href="#" onclick="return omlExclude('${p.prop_id}', true)">re-include</a>`
+      : `<br><a href="#" onclick="return omlExclude('${p.prop_id}')">exclude from candidates</a>`;
+    layer.bindPopup(
+      ids + `<br><small style="color:#7a3ea8">↳ matched on ${matched}</small><br>` +
+      parcelInfoHtml(p) + excl,
+      { maxWidth: 340, autoPan: false });
   }
 
   // Estate / inheritance badge: owner-name probate proxy (db/flag-estate.js). The reason shows signal
@@ -232,9 +261,9 @@
     return `<br><span style="color:#1a7f37;font-weight:700">ALREADY IN AIRTABLE</span>${camps}`;
   }
 
-  // manual exclude: drop a hand-picked parcel from candidates, then re-render
-  window.omlExclude = (id) => {
-    fetch('/api/exclude?prop_id=' + encodeURIComponent(id), { method: 'POST' })
+  // manual exclude: drop a hand-picked parcel from candidates (undo=true puts it back), then re-render
+  window.omlExclude = (id, undo) => {
+    fetch('/api/exclude?prop_id=' + encodeURIComponent(id) + (undo ? '&undo=1' : ''), { method: 'POST' })
       .then((r) => r.json()).then(() => { map.closePopup(); schedule(); });
     return false;
   };
@@ -347,6 +376,61 @@
       ? `Radius ${(geoFilter.radM / 1609.34).toFixed(2)} mi active` : 'Polygon area active';
   }
   el('geo-clear').addEventListener('click', () => { clearGeo(); schedule(); });
+
+  // ---- parcel lookup: jump straight to one parcel by APN / County Property ID / Geo ID ----
+  function setLookupMsg(html, color) {
+    const m = el('lookup-msg');
+    m.style.color = color || '#6b7684';
+    m.innerHTML = html;
+  }
+  function clearLookup(resetMsg) {
+    if (lookupLayer) { map.removeLayer(lookupLayer); lookupLayer = null; }
+    el('lookup-id').classList.remove('bad');
+    if (resetMsg) setLookupMsg('Jump straight to one parcel — searches every parcel, ignoring the filters below.');
+  }
+  async function runLookup() {
+    const id = el('lookup-id').value.trim();
+    el('lookup-id').classList.remove('bad');
+    if (!id) { setLookupMsg('Enter an APN / County Property ID / Geo ID.'); return; }
+    setLookupMsg('Searching…');
+    let data;
+    try { data = await fetchJSON('/api/lookup?id=' + encodeURIComponent(id)); }
+    catch (e) { setLookupMsg('Lookup failed: ' + e.message, '#c0392b'); return; }
+    if (!data.features || !data.features.length) {
+      clearLookup(false);
+      el('lookup-id').classList.add('bad');
+      setLookupMsg(`No parcel found for “${id}”. Check the ID — try the County Property ID (e.g. R489794) or Geo ID.`, '#c0392b');
+      return;
+    }
+    showLookup(data.features);
+  }
+  function showLookup(features) {
+    clearLookup(false);
+    const fc = { type: 'FeatureCollection', features: features.filter((f) => f.geometry || f.properties.lat != null) };
+    const hl = { color: '#7a3ea8', weight: 3, fillColor: '#b06ee0', fillOpacity: 0.25 };
+    lookupLayer = L.geoJSON(fc, {
+      pane: 'lookupPane',
+      style: () => hl,
+      pointToLayer: (f, latlng) => L.circleMarker(latlng, Object.assign({ pane: 'lookupPane', radius: 8, weight: 3, fillOpacity: 0.85 }, hl)),
+      onEachFeature: lookupPopup,
+    }).addTo(map);
+
+    const b = lookupLayer.getBounds();
+    if (b.isValid()) map.fitBounds(b, { maxZoom: 17, padding: [50, 50] });
+    else { const p0 = features[0].properties; if (p0.lat != null) map.setView([p0.lat, p0.lng], 17); }
+    const first = lookupLayer.getLayers()[0];
+    if (first) first.openPopup();
+
+    const p0 = features[0].properties;
+    const where = features.length > 1
+      ? `${features.length} parcels match that ID`
+      : `Found in ${title(p0.county)} County — ${p0.owner || '(no owner)'}`;
+    setLookupMsg(`✓ ${where}. <a href="#" id="lookup-clear">clear highlight</a>`, '#0a7d3c');
+    const clr = el('lookup-clear');
+    if (clr) clr.addEventListener('click', (e) => { e.preventDefault(); clearLookup(true); });
+  }
+  el('lookup-go').addEventListener('click', runLookup);
+  el('lookup-id').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); runLookup(); } });
 
   // ---- finalize batch → export (Airtable + Excel) ----
   let campaignNames = new Set(); // lowercased names already used in Airtable (uniqueness guard)
